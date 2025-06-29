@@ -1,0 +1,31 @@
+[project]
+authors = ["Alister Burt <alisterburt@gmail.com>"]
+channels = [
+    "https://conda.modular.com/max-nightly",
+    "conda-forge"
+]
+name = "mojo-hackathon"
+platforms = [
+    "osx-arm64"
+]
+version = "0.1.0"
+
+[tasks]
+build = "mojo build --emit shared-lib src/projection_kernel/mojo/gobrr.mojo -o src/projection_kernel/py/gobrr.so"
+run = "python -u src/projection_kernel/py/project_backproject.py"
+
+[dependencies]
+modular = ">=25.5.0.dev2025062815,<26"
+max = ">=25.5.0.dev2025062815,<26"
+
+[pypi-dependencies]
+torch = "~=2.7"
+numpy = "~=2.3"
+scipy = "~=1.15"
+mrcfile = "~=1.5"
+torch-fourier-slice = "==0.3.0"
+torch-grid-utils = "==0.0.6"
+napari = "~=0.6"
+pyqt5 = "~=5.15"
+
+
