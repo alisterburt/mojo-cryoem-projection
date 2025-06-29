@@ -91,8 +91,8 @@ def project_3d_to_2d_gpu(
             volume_dft_device.unsafe_ptr(),
             rotation_matrices_device.unsafe_ptr(),
             output_dfts_device.unsafe_ptr(),
-            grid_dim=(2500, 32, 17),
-            block_dim=(1, 8, 8)
+            grid_dim=(17, 32, 2500),
+            block_dim=(8, 8, 1)
         )
 
         # copy results back to host
@@ -100,6 +100,7 @@ def project_3d_to_2d_gpu(
 
         # wait for everything to be done
         ctx.synchronize()
+
 
 fn mojo_projection_cpu(
     volume_dft_ptr: UnsafePointer[Float32],
@@ -235,8 +236,8 @@ fn mojo_projection_gpu(
 
     # recreate imagei, y and x from thread indices
     var imagei = block_idx.z
-    var y = block_dim.y * block_idx.y + thread_idx.y
-    var x = block_dim.x * block_idx.x + thread_idx.x
+    var y = block_idx.y * block_dim.y + thread_idx.y
+    var x = block_idx.x * block_dim.x + thread_idx.x
 
     # remember to guard x because we have overflow lol
     if x > (OUTPUT_DFT_WIDTH - 1):
@@ -357,6 +358,9 @@ fn mojo_projection_gpu(
     # write answer
     output_dfts[imagei, 0, y, x][0] = re
     output_dfts[imagei, 1, y, x][0] = im
+
+    if imagei == 0 and y == 128 and x == 64:
+        print(re, im)
 
 
 

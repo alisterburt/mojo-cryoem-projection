@@ -26,7 +26,6 @@ volume = torch.as_tensor(volume, dtype=torch.float32)
 tilt_angles = np.linspace(-60, 60, num=N_PROJECTIONS_PER_BATCH)
 rotation_matrices = R.from_euler("y", angles=tilt_angles, degrees=True).as_matrix()
 rotation_matrices = torch.tensor(rotation_matrices, dtype=torch.float32)
-print(rotation_matrices[0, ...])
 
 ## Data prep for projection (project 3D down to 2D)
 
@@ -58,39 +57,52 @@ c, d, h, w = dft_real.shape
 out_dfts = torch.zeros(size=(N_PROJECTIONS_PER_BATCH, c, h, w), dtype=torch.float32, device=dft_real.device)
 
 
+gobrr.project_3d_to_2d_gpu(dft_real, rotation_matrices, out_dfts)
+print("done yo")
+out_dfts = einops.rearrange(out_dfts, "b c h w -> b h w c")
+out_dfts = torch.view_as_complex(out_dfts.contiguous())
+print(out_dfts.shape, out_dfts.dtype)
+projections = torch.fft.ifftshift(out_dfts, dim=(-2,))  # ifftshift of 2D rfft
+projections = torch.fft.irfftn(projections, dim=(-2, -1))
+projections = torch.fft.ifftshift(projections, dim=(-2, -1))  # recenter 2D image in real space
 
-# warmup block for python
-for i in range(N_WARMUP_ITERATIONS):
-    tilt_series_dft = extract_central_slices_rfft_3d(
-        volume_rfft=dft,
-        image_shape=volume.shape,
-        rotation_matrices=torch.tensor(rotation_matrices).float(),
-    )  # (..., h, w) rfft stack
+# unpad if required
+projections = projections[..., pad_length:-pad_length, pad_length:-pad_length]
+projections = torch.real(projections)
+mrcfile.write("gpu.mrc", projections.numpy(), overwrite=True)
 
-# actual perf measurement for python
-print("python start")
-start = datetime.now()
-for i in range(N_ITERATIONS):
-    tilt_series_dft = extract_central_slices_rfft_3d(
-        volume_rfft=dft,
-        image_shape=volume.shape,
-        rotation_matrices=rotation_matrices,
-    )  # (..., h, w) rfft stack
-end = datetime.now()
-print(f"pps python: {(N_PROJECTIONS_PER_BATCH * N_ITERATIONS) / (end - start).total_seconds():.2f}")
+# # warmup block for python
+# for i in range(N_WARMUP_ITERATIONS):
+#     tilt_series_dft = extract_central_slices_rfft_3d(
+#         volume_rfft=dft,
+#         image_shape=volume.shape,
+#         rotation_matrices=torch.tensor(rotation_matrices).float(),
+#     )  # (..., h, w) rfft stack
 
-time.sleep(3)
-# warmup block for mojo
-print("mojo start")
-for i in range(N_WARMUP_ITERATIONS):
-    tilt_series_dft = gobrr.project_3d_to_2d_cpu(dft_real, rotation_matrices, out_dfts)
+# # actual perf measurement for python
+# print("python start")
+# start = datetime.now()
+# for i in range(N_ITERATIONS):
+#     tilt_series_dft = extract_central_slices_rfft_3d(
+#         volume_rfft=dft,
+#         image_shape=volume.shape,
+#         rotation_matrices=rotation_matrices,
+#     )  # (..., h, w) rfft stack
+# end = datetime.now()
+# print(f"pps python: {(N_PROJECTIONS_PER_BATCH * N_ITERATIONS) / (end - start).total_seconds():.2f}")
 
-# actual perf measurement for python
-start = datetime.now()
-for i in range(N_ITERATIONS):
-    tilt_series_dft = gobrr.project_3d_to_2d_cpu(dft_real, rotation_matrices, out_dfts)
-end = datetime.now()
-print(f"pps mojo: {(N_PROJECTIONS_PER_BATCH * N_ITERATIONS) / (end - start).total_seconds():.2f}")
+# time.sleep(3)
+# # warmup block for mojo
+# print("mojo start")
+# for i in range(N_WARMUP_ITERATIONS):
+#     tilt_series_dft = gobrr.project_3d_to_2d_cpu(dft_real, rotation_matrices, out_dfts)
+
+# # actual perf measurement for mojo
+# start = datetime.now()
+# for i in range(N_ITERATIONS):
+#     tilt_series_dft = gobrr.project_3d_to_2d_cpu(dft_real, rotation_matrices, out_dfts)
+# end = datetime.now()
+# print(f"pps mojo cpu: {(N_PROJECTIONS_PER_BATCH * N_ITERATIONS) / (end - start).total_seconds():.2f}")
 
 
 # start = datetime.now()
