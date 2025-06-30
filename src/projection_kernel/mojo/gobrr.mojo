@@ -9,18 +9,22 @@ from complex import ComplexFloat32
 from utils.index import IndexList
 from gpu.host import DeviceContext
 from gpu import thread_idx, block_dim, block_idx
+import time
 
 @export
 fn PyInit_gobrr() -> PythonObject:
     try:
         var m = PythonModuleBuilder("gobrr")
         m.def_function[project_3d_to_2d_cpu]("project_3d_to_2d_cpu")
-        m.def_function[project_3d_to_2d_gpu]("project_3d_to_2d_gpu")
+        m.def_function[benchmark_project_3d_to_2d_gpu]("benchmark_project_3d_to_2d_gpu")
         return m.finalize()
     except e:
         return abort[PythonObject](String("Error creating Mojo module: ", e))
 
+# perf
+alias N_ITERATIONS = 2000
 
+# kernel
 alias N_PROJECTIONS = 2500
 alias VOLUME_DFT_DEPTH = 256
 alias VOLUME_DFT_HEIGHT = 256
@@ -59,7 +63,7 @@ def project_3d_to_2d_cpu(
     mojo_projection_cpu(volume_dft_ptr, rotation_matrices_ptr, output_dfts_ptr)
 
 
-def project_3d_to_2d_gpu(
+def benchmark_project_3d_to_2d_gpu(
     volume_dft: PythonObject,
     rotation_matrices: PythonObject,
     output_dfts: PythonObject
@@ -87,13 +91,22 @@ def project_3d_to_2d_gpu(
         ctx.enqueue_copy(rotation_matrices_device, rotation_matrices_host_ptr)
 
         # actually launch the kernel
-        ctx.enqueue_function[mojo_projection_gpu](
-            volume_dft_device.unsafe_ptr(),
-            rotation_matrices_device.unsafe_ptr(),
-            output_dfts_device.unsafe_ptr(),
-            grid_dim=(17, 32, 2500),
-            block_dim=(8, 8, 1)
-        )
+        ctx.synchronize()
+        var t0 = time.perf_counter_ns()
+        for i in range(N_ITERATIONS):
+            ctx.enqueue_function[mojo_projection_gpu](
+                volume_dft_device.unsafe_ptr(),
+                rotation_matrices_device.unsafe_ptr(),
+                output_dfts_device.unsafe_ptr(),
+                grid_dim=(17, 32, 2500),
+                block_dim=(8, 8, 1)
+            )
+        ctx.synchronize()
+        var t1 = time.perf_counter_ns()
+        var delta_ns = t1 - t0
+        var delta_s = Float32(delta_ns) / 1e9
+        var pps = (N_PROJECTIONS * N_ITERATIONS) / delta_s
+        print("pps mojo gpu: ", pps)
 
         # copy results back to host
         ctx.enqueue_copy(output_dfts_host_ptr, output_dfts_device)
@@ -359,15 +372,10 @@ fn mojo_projection_gpu(
     output_dfts[imagei, 0, y, x][0] = re
     output_dfts[imagei, 1, y, x][0] = im
 
-    if imagei == 0 and y == 128 and x == 64:
-        print(re, im)
-
-
-
-
 
 fn lerp_1d(v0: Float32, v1: Float32, t: Float32) -> Float32:
     return (t*v1) + (1.0 - t)*v0
+
 
 fn lerp_3d(
     volume_dft: VolumeDFT,
