@@ -3,7 +3,7 @@
 This repo contains a GPU accelerated kernel for projecting a cubic 3D volume into a 2D image written in
 [Mojo](https://docs.modular.com/mojo/manual/get-started/).
 <div align="center">
-  <table>
+  <table style="border: none;">
     <tr>
       <td><img src="./assets/ribo.png" alt="ribosome volume" width="300"></td>
       <td><span style="font-size: 2em; margin: 0 20px;">→</span></td>
