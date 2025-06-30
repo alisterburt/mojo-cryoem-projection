@@ -68,4 +68,4 @@ projections = torch.fft.irfftn(projections, dim=(-2, -1))
 projections = torch.fft.ifftshift(projections, dim=(-2, -1))  # recenter 2D image in real space
 projections = projections[..., pad_length:-pad_length, pad_length:-pad_length]
 projections = torch.real(projections)
-mrcfile.write("mojo_output.mrc", projections.numpy(), overwrite=True)
+mrcfile.write("mojo_output.mrc", projections.cpu().numpy(), overwrite=True)

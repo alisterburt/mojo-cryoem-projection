@@ -12,7 +12,7 @@ version = "0.1.0"
 
 [tasks]
 build = "mojo build --emit shared-lib src/projection_kernel/mojo/gobrr.mojo -o src/projection_kernel/py/gobrr.so"
-benchmark-python = "python -u src/projection_kernel/py/benchmark_python.py"
+benchmark-torch = "python -u src/projection_kernel/py/benchmark_torch.py"
 benchmark-mojo = "python -u src/projection_kernel/py/benchmark_mojo.py"
 
 [dependencies]

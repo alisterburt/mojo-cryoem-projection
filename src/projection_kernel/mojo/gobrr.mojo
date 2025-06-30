@@ -22,6 +22,7 @@ fn PyInit_gobrr() -> PythonObject:
         return abort[PythonObject](String("Error creating Mojo module: ", e))
 
 # perf
+alias N_WARMUP_ITERATIONS = 500
 alias N_ITERATIONS = 2000
 
 # kernel
@@ -89,8 +90,19 @@ def benchmark_project_3d_to_2d_gpu(
         # copy data from host to device
         ctx.enqueue_copy(volume_dft_device, volume_dft_host_ptr)
         ctx.enqueue_copy(rotation_matrices_device, rotation_matrices_host_ptr)
+        
+        # warm up the GPU
+        ctx.synchronize()
+        for i in range(N_WARMUP_ITERATIONS):
+            ctx.enqueue_function[mojo_projection_gpu](
+                volume_dft_device.unsafe_ptr(),
+                rotation_matrices_device.unsafe_ptr(),
+                output_dfts_device.unsafe_ptr(),
+                grid_dim=(17, 32, 2500),
+                block_dim=(8, 8, 1)
+            )
 
-        # actually launch the kernel
+        # actually benchmark the kernel
         ctx.synchronize()
         var t0 = time.perf_counter_ns()
         for i in range(N_ITERATIONS):
@@ -106,7 +118,7 @@ def benchmark_project_3d_to_2d_gpu(
         var delta_ns = t1 - t0
         var delta_s = Float32(delta_ns) / 1e9
         var pps = (N_PROJECTIONS * N_ITERATIONS) / delta_s
-        print("pps mojo gpu: ", pps)
+        print("projections per second mojo gpu: ", pps)
 
         # copy results back to host
         ctx.enqueue_copy(output_dfts_host_ptr, output_dfts_device)

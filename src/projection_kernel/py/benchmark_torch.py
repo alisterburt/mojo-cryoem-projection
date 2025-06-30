@@ -64,7 +64,7 @@ for i in range(N_ITERATIONS):
         rotation_matrices=rotation_matrices,
     )  # (..., h, w) rfft stack
 end = datetime.now()
-print(f"pps torch (cuda): {(N_PROJECTIONS_PER_BATCH * N_ITERATIONS) / (end - start).total_seconds():.2f}")
+print(f"projections per second torch (cuda): {(N_PROJECTIONS_PER_BATCH * N_ITERATIONS) / (end - start).total_seconds():.2f}")
 
 # convert to real space and write out projections
 projections = torch.fft.ifftshift(out_dfts, dim=(-2,))  # ifftshift of 2D rfft
@@ -72,4 +72,4 @@ projections = torch.fft.irfftn(projections, dim=(-2, -1))
 projections = torch.fft.ifftshift(projections, dim=(-2, -1))  # recenter 2D image in real space
 projections = projections[..., pad_length:-pad_length, pad_length:-pad_length]
 projections = torch.real(projections)
-mrcfile.write("torch_output.mrc", projections.numpy(), overwrite=True)
+mrcfile.write("torch_output.mrc", projections.cpu().numpy(), overwrite=True)
