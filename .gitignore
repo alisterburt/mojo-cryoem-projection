@@ -1,3 +1,4 @@
+./src/projection_kernel/py/gobrr.so
 ./torch_output.mrc
 ./mojo_output.mrc
 .pixi
