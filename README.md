@@ -3,11 +3,14 @@
 This repo contains a GPU accelerated kernel for projecting a cubic 3D volume into a 2D image written in 
 [Mojo](https://docs.modular.com/mojo/manual/get-started/).
 
-<div style="display: flex; gap: 1em; align-items: center;">
-  <img src="./assets/ribo.png" alt="ribosome volume" width="300">
-  <span style="font-size: 2em; margin: 0 20px;">→</span>
-  <img src="./assets/projections.gif" alt="ribosome projections" width="300">
-</div>
+<table>
+  <tr>
+    <td><img src="./assets/ribo.png" alt="ribosome volume" width="300"></td>
+    <td><span style="font-size: 2em; margin: 0 20px;">→</span></td>
+    <td><img src="./assets/projections.gif" alt="ribosome projections" width="300"></td>
+  </tr>
+</table>
+
 
 This projection operation is implemented in Fourier space, where projecting 3D density to 2D involves sampling a central slice from a 3D Fourier transform.
 - https://en.wikipedia.org/wiki/Projection-slice_theorem
